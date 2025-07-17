@@ -14,7 +14,7 @@
 <html>
 <head>
   <title>Gupy App</title>
-  <!-- <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script> -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.min.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.tailwindcss.com"></script>
@@ -72,7 +72,7 @@ document.addEventListener('contextmenu', function(event) {
 </script>
   <script type="module">
     const { createApp } = Vue
-    //  import { loadGoWasm } from './go_wasm.js';
+     import { loadGoWasm } from './go_wasm.js';
     createApp({
       delimiters : ['[[', ']]'],
         data(){
