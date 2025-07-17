@@ -65,14 +65,14 @@ document.addEventListener('contextmenu', function(event) {
     event.preventDefault();
 });
 </script> -->
-<script>
+<!-- <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js', { scope: '/' });
   }
-</script>
+</script> -->
   <script type="module">
     const { createApp } = Vue
-     import { loadGoWasm } from './go_wasm.js';
+    //  import { loadGoWasm } from './go_wasm.js';
     createApp({
       delimiters : ['[[', ']]'],
         data(){
@@ -90,79 +90,79 @@ document.addEventListener('contextmenu', function(event) {
 
         },
         created(){
-            // This variable will save the event for later use.
-              window.addEventListener('beforeinstallprompt', (e) => {
-                  // Prevents the default mini-infobar or install dialog from appearing on mobile
-                  //   e.preventDefault();
-                  // Save the event because you'll need to trigger it later.
-                  this.pwa_install = e;
-                  // Show your customized install prompt for your PWA
-                  // Your own UI doesn't have to be a single element, you
-                  // can have buttons in different locations, or wait to prompt
-                  // as part of a critical journey.
-                  showInAppInstallPromotion();
-              });
+            // // This variable will save the event for later use.
+            //   window.addEventListener('beforeinstallprompt', (e) => {
+            //       // Prevents the default mini-infobar or install dialog from appearing on mobile
+            //       //   e.preventDefault();
+            //       // Save the event because you'll need to trigger it later.
+            //       this.pwa_install = e;
+            //       // Show your customized install prompt for your PWA
+            //       // Your own UI doesn't have to be a single element, you
+            //       // can have buttons in different locations, or wait to prompt
+            //       // as part of a critical journey.
+            //       showInAppInstallPromotion();
+            //   });
 
-            // Make a request for a user with a given ID
-            axios.get('/api/example_api_endpoint')
-            .then(function (response) {
-                // handle success
-                console.log(response);
-                this.data = JSON.parse(JSON.stringify(response['data']))
-                console.log(this.data)
-            })
-            .catch(function (error) {
-                // handle error
-                console.log(error);
+            // // Make a request for a user with a given ID
+            // axios.get('/api/example_api_endpoint')
+            // .then(function (response) {
+            //     // handle success
+            //     console.log(response);
+            //     this.data = JSON.parse(JSON.stringify(response['data']))
+            //     console.log(this.data)
+            // })
+            // .catch(function (error) {
+            //     // handle error
+            //     console.log(error);
 
-          try {
-            // use pyodide instead of api example
-            async function main(){
-              const pyodide = await loadPyodide();
-              pyodide.registerJsModule("mymodule", {
-                pyodide_msg: this.pyodide_msg,
-              })
-              await pyodide.loadPackage("numpy")
-              const result = await pyodide.runPython(`
-#import variables
-import mymodule
+//           try {
+//             // use pyodide instead of api example
+//             async function main(){
+//               const pyodide = await loadPyodide();
+//               pyodide.registerJsModule("mymodule", {
+//                 pyodide_msg: this.pyodide_msg,
+//               })
+//               await pyodide.loadPackage("numpy")
+//               const result = await pyodide.runPython(`
+// #import variables
+// import mymodule
 
-# use variable
-pyodide_msg = mymodule.pyodide_msg
+// # use variable
+// pyodide_msg = mymodule.pyodide_msg
 
-# change variable
-pyodide_msg = 'This is the changed pyodide message!'
+// # change variable
+// pyodide_msg = 'This is the changed pyodide message!'
 
-# output response
-response = {'new_msg':pyodide_msg}
-`)
-              return JSON.parse(response)
-          }
-            response = main()
-            console.log(response.new_msg)
-          } catch (error) {
-            console.log('An error occurred: ', error);
-          }
+// # output response
+// response = {'new_msg':pyodide_msg}
+// `)
+//               return JSON.parse(response)
+//           }
+//             response = main()
+//             console.log(response.new_msg)
+//           } catch (error) {
+//             console.log('An error occurred: ', error);
+//           }
 
-        })
-        .finally(function () {
-          // always executed
-        });
+        // })
+        // .finally(function () {
+        //   // always executed
+        // });
 
       },
         async mounted() {
-          try {
-            const goExports = await loadGoWasm();
-            console.log("Go WebAssembly ran add(5,7) and returned:" + goExports.add(5, 7));
-          } catch (error) {
-            console.error("Error loading Go WASM:", error);
-          }
+          // try {
+          //   const goExports = await loadGoWasm();
+          //   console.log("Go WebAssembly ran add(5,7) and returned:" + goExports.add(5, 7));
+          // } catch (error) {
+          //   console.error("Error loading Go WASM:", error);
+          // }
 
-          let worker = new Worker('worker.js');
-          worker.postMessage({ message: '' });
-          worker.onmessage = function (message) {
-            console.log(message.data)
-          }
+          // let worker = new Worker('worker.js');
+          // worker.postMessage({ message: '' });
+          // worker.onmessage = function (message) {
+          //   console.log(message.data)
+          // }
 
         },
         computed:{
