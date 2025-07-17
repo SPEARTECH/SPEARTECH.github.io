@@ -37,6 +37,22 @@
         <button class="btn bg-blue-500 stroke-blue-500 hover:bg-blue-500 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/50 text-base-100">[[ message ]] </button>
         <br>
         <br>
+        <!-- This block only appears on https apps for installing as a PWA standalone on your device -->
+        <div v-if="pwa_install" role="alert" class="alert shadow-lg">
+            <!--<div role="alert" class="alert shadow-lg">-->
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+            class="stroke-info shrink-0 w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span>Install this app on your device!</span>
+            <div>
+            <button
+                class=" btn btn-sm bg-blue-500  text-white  shadow-lg  hover:bg-blue-500/50 shadow-blue-500/50 hover:shadow-xl hover:shadow-blue-500/50 hover:-translate-y-0.5 no-animation"
+                @Click="prompt" id="install">Install</button>
+            </div>
+            
+        </div>
         <br>
 
       </div>
@@ -49,11 +65,11 @@ document.addEventListener('contextmenu', function(event) {
     event.preventDefault();
 });
 </script> -->
-<!-- <script>
+<script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js', { scope: '/' });
   }
-</script> -->
+</script>
   <script type="module">
     const { createApp } = Vue
     //  import { loadGoWasm } from './go_wasm.js';
@@ -63,6 +79,7 @@ document.addEventListener('contextmenu', function(event) {
           return {
             message: 'Welcome to SPEARTECH!',
             data: {},
+            pwa_install: '',
           }
         },
         methods: {
@@ -72,18 +89,18 @@ document.addEventListener('contextmenu', function(event) {
 
         },
         created(){
-            // // // This variable will save the event for later use.
-            //   window.addEventListener('beforeinstallprompt', (e) => {
-            //       // Prevents the default mini-infobar or install dialog from appearing on mobile
-            //       //   e.preventDefault();
-            //       // Save the event because you'll need to trigger it later.
-            //       this.pwa_install = e;
-            //       // Show your customized install prompt for your PWA
-            //       // Your own UI doesn't have to be a single element, you
-            //       // can have buttons in different locations, or wait to prompt
-            //       // as part of a critical journey.
-            //       showInAppInstallPromotion();
-            //   });
+            // // This variable will save the event for later use.
+              window.addEventListener('beforeinstallprompt', (e) => {
+                  // Prevents the default mini-infobar or install dialog from appearing on mobile
+                  //   e.preventDefault();
+                  // Save the event because you'll need to trigger it later.
+                  this.pwa_install = e;
+                  // Show your customized install prompt for your PWA
+                  // Your own UI doesn't have to be a single element, you
+                  // can have buttons in different locations, or wait to prompt
+                  // as part of a critical journey.
+                  showInAppInstallPromotion();
+              });
 
             // // Make a request for a user with a given ID
             // axios.get('/api/example_api_endpoint')
