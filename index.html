@@ -14,7 +14,7 @@
 <html>
 <head>
   <title>Gupy App</title>
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script> -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.min.css" rel="stylesheet" type="text/css" />
   <script src="https://cdn.tailwindcss.com"></script>
@@ -115,34 +115,34 @@ document.addEventListener('contextmenu', function(event) {
                 // handle error
                 console.log(error);
 
-          try {
-            // use pyodide instead of api example
-            async function main(){
-              const pyodide = await loadPyodide();
-              pyodide.registerJsModule("mymodule", {
-                pyodide_msg: this.pyodide_msg,
-              })
-              await pyodide.loadPackage("numpy")
-              const result = await pyodide.runPython(`
-#import variables
-import mymodule
+//           try {
+//             // use pyodide instead of api example
+//             async function main(){
+//               const pyodide = await loadPyodide();
+//               pyodide.registerJsModule("mymodule", {
+//                 pyodide_msg: this.pyodide_msg,
+//               })
+//               await pyodide.loadPackage("numpy")
+//               const result = await pyodide.runPython(`
+// #import variables
+// import mymodule
 
-# use variable
-pyodide_msg = mymodule.pyodide_msg
+// # use variable
+// pyodide_msg = mymodule.pyodide_msg
 
-# change variable
-pyodide_msg = 'This is the changed pyodide message!'
+// # change variable
+// pyodide_msg = 'This is the changed pyodide message!'
 
-# output response
-response = {'new_msg':pyodide_msg}
-`)
-              return JSON.parse(response)
-          }
-            response = main()
-            console.log(response.new_msg)
-          } catch (error) {
-            console.log('An error occurred: ', error);
-          }
+// # output response
+// response = {'new_msg':pyodide_msg}
+// `)
+//               return JSON.parse(response)
+//           }
+//             response = main()
+//             console.log(response.new_msg)
+//           } catch (error) {
+//             console.log('An error occurred: ', error);
+//           }
 
         })
         .finally(function () {
