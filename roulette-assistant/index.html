@@ -1,0 +1,997 @@
+
+
+ <!-- Documentation:
+   https://daisyui.com/
+   https://tailwindcss.com/
+   https://www.highcharts.com/
+   https://vuejs.org/
+   https://pyodide.org/en/stable/
+   https://www.papaparse.com/
+   https://danfo.jsdata.org/
+   https://axios-http.com/docs/intro -->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Roulette Assistant</title>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/danfojs@1.1.2/lib/bundle.min.js"></script>
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/modules/boost.js"></script>
+  <script src="https://code.highcharts.com/modules/exporting.js"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+  <link rel="icon" href="./gupy_logo.png" type="image/png">
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  </head>
+<body>
+  <div id="app" style="text-align: center;">
+    <center>
+      <div class="h-full">
+        <div class="drawer drawer-end">
+          <input id="my-drawer-3" type="checkbox" class="drawer-toggle" /> 
+
+          <div class="drawer-content flex flex-col">
+            <!-- Navbar -->
+            <div class="w-full navbar bg-base-300">
+              <div class="flex-1 px-2"></div>
+              <div class="flex-none hidden lg:block">
+                <ul class="menu menu-horizontal space-x-2">
+                  <!-- Navbar menu content here -->
+                  <li>
+                    <label class="label cursor-pointer">
+                      <span v-if="total_numbers == 38" class="label-text">Double Zero</span> 
+                      <span v-else class="label-text">Single Zero</span> 
+                      <input type="checkbox" class="toggle" @click="change_total_numbers()" checked />
+                    </label>
+                  </li>
+                  <li>
+                    <label class="label cursor-pointer">
+                      <span v-if="virtual == true" class="label-text">Total Max Bet (Virtual)</span> 
+                      <span v-else class="label-text">Traditional Max Bet</span> 
+                      <input type="checkbox" class="toggle" v-model="virtual" checked />
+                    </label>
+                  </li>
+                  <li>
+                    <label class="label cursor-pointer">
+                      <span v-if="minimize == true" class="label-text">Minimize Loss</span> 
+                      <span v-else class="label-text">Maximize Gain</span> 
+                      <input type="checkbox" class="toggle" v-model="minimize" checked />
+                    </label>
+                  </li>
+                  <li>
+                  <input type="number" placeholder="Min Bet" v-model="min_bet" class="input-sm input-bordered h-full" />
+                  </li>
+                  <li>
+                    <input type="number" placeholder="Max Bet" v-model="max_bet" class="input-sm input-bordered h-full" />
+                      </li>
+                  <li>
+                    <input type="number" placeholder="Max Loss" v-model="max_loss" class="input-sm input-bordered h-full" />
+                      </li>
+                  <li>
+                    <button class="btn btn-sm h-full bg-sky-300" @click="calculate()">Calculate</button>
+                  </li>
+                </ul>
+              </div>
+              <div class="flex-none lg:hidden">
+                <label for="my-drawer-3" aria-label="open sidebar" class="btn btn-square btn-ghost">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-6 h-6 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </label>
+              </div> 
+            </div>
+            <!-- Page content here -->
+            <div v-if="calculated == true">
+              <div class="overflow-x-auto">
+                <table class="table table-md  table-pin-cols">
+                  <thead>
+                    <tr>
+                      <th></th> 
+                      <td>Strategy</td> 
+                      <td>Max Loss Probability</td> 
+                      <td>Max Loss</td> 
+                      <td>Avg Gain</td> 
+                      <td>Stake Increase</td>
+                      <td>Avg Rounds to Max Loss</td>
+                      <td>Lowest Spins</td>
+                      <td>Max Loss Chance</td>
+                      <th></th> 
+                    </tr>
+                  </thead> 
+                  <tbody>
+                    <tr v-for="strategy in ordered_strategies">
+                      <th></th> 
+                      <!-- Open the modal using ID.showModal() method -->
+                      <td><button class="btn btn-sm w-full" @click="open_modal(strategy.name)">[[strategy.name]]</button></td> 
+                      <td>[[parseFloat(strategy.probability).toFixed(6)]]%</td> 
+                      <td>$[[parseFloat(strategy.max_loss).toFixed(2)]]</td> 
+                      <td>$[[parseFloat(strategy.avg_gain).toFixed(2)]]</td> 
+                      <td>[[((parseFloat(strategy.current_ratio)-1)*100)]]%</td> 
+                      <td>[[(1/(parseFloat(strategy.probability))*100).toFixed(0)]]</td>
+                      <td><button class="btn btn-sm w-full" @click="open_spins_modal(strategy.name)">[[strategy.spins_ml[strategy.spins_ml.length -1].spins.toFixed(0)]]</button></td>
+                      <td>[[strategy.spins_ml[strategy.spins_ml.length -1].perc.toFixed(2)]]%</td>                      
+                      <th></th> 
+                    </tr>
+                  </tbody> 
+                  <tfoot>
+                    <tr>
+                      <th></th> 
+                      <td>Strategy</td> 
+                      <td>Max Loss Probability</td> 
+                      <td>Max Loss</td> 
+                      <td>Avg Gain</td> 
+                      <td>Stake Increase</td>
+                      <td>Avg Rounds to Max Loss</td>
+                      <td>Lowest Spins</td>
+                      <td>Max Loss Chance</td>
+                      <th></th> 
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+            <dialog id="my_modal_2" class="modal">
+              <div class="modal-box">
+                <h3 class="text-lg font-bold">[[ modal_strategy_name ]]</h3>
+                <br>
+                <h3 class="text-sm">Bet Progression</h3>
+                <div class="overflow-x-auto">
+                  <table class="table table-md  table-pin-cols">
+                    <thead>
+                      <tr>
+                        <th></th> 
+                        <td>#</td> 
+                        <td>Amt per Unit</td> 
+                        <td>Total Loss</td> 
+                        <th></th> 
+                      </tr>
+                    </thead> 
+                    <tbody>
+                      <tr v-for="item in modal_bets">
+                        <th></th> 
+                        <!-- Open the modal using ID.showModal() method -->
+                        <td>[[ modal_bets.indexOf(item) + 1 ]]</td> 
+                        <td>[[ item.bet ]]</td> 
+                        <td>[[ item.total_loss ]]</td> 
+                        <th></th> 
+                      </tr>
+                    </tbody> 
+                  </table>
+                </div>
+                </div>
+              <form method="dialog" class="modal-backdrop">
+                <button>close</button>
+              </form>
+            </dialog>
+            <dialog id="my_modal_3" class="modal">
+              <div class="modal-box">
+                <h3 class="text-lg font-bold">[[ modal_strategy_name ]]</h3>
+                <br>
+                <h3 class="text-sm">Spins</h3>
+                <div class="overflow-x-auto">
+                  <table class="table table-md  table-pin-cols">
+                    <thead>
+                      <tr>
+                        <th></th> 
+                        <td>Spins</td> 
+                        <td>Change of Max Loss</td> 
+                        <td>Possible Amt</td> 
+                        <th></th> 
+                      </tr>
+                    </thead> 
+                    <tbody>
+                      <tr v-for="item in modal_spins">
+                        <th></th> 
+                        <!-- Open the modal using ID.showModal() method -->
+                        <td>[[ item.spins.toFixed(0) ]]</td> 
+                        <td>[[ item.perc.toFixed(2) ]]%</td> 
+                        <td>$[[ item.amt.toFixed(2) ]]</td> 
+                        <th></th> 
+                      </tr>
+                    </tbody> 
+                  </table>
+                </div>
+                </div>
+              <form method="dialog" class="modal-backdrop">
+                <button>close</button>
+              </form>
+            </dialog>
+          </div> 
+
+          <div class="drawer-side">
+            <label for="my-drawer-3" aria-label="close sidebar" class="drawer-overlay"></label> 
+            <ul class="menu p-4 w-80 min-h-full bg-base-200 space-y-2">
+              <!-- Sidebar content here -->
+              <li>
+                <label class="label cursor-pointer">
+                  <span v-if="total_numbers == 38" class="label-text">Double Zero</span> 
+                  <span v-else class="label-text">Single Zero</span> 
+                  <input type="checkbox" class="toggle" @click="change_total_numbers()" checked />
+                </label>
+              </li>
+              <li>
+                <label class="label cursor-pointer">
+                  <span v-if="virtual == true" class="label-text">Total Max Bet (Virtual)</span> 
+                  <span v-else class="label-text">Traditional Max Bet</span> 
+              <input type="checkbox" class="toggle" v-model="virtual" checked />
+                </label>
+              </li>
+              <li>
+                <label class="label cursor-pointer">
+                  <span v-if="minimize == true" class="label-text">Minimize Loss</span> 
+                  <span v-else class="label-text">Maximize Gain</span> 
+                  <input type="checkbox" class="toggle" v-model="minimize" checked />
+                </label>
+              </li>
+              <li>
+                  <input type="number" placeholder="Min Bet" v-model="min_bet" class="input-sm input-bordered w-full h-full max-w-xs" />
+              </li>
+              <li>
+                <input type="number" placeholder="Max Bet" v-model="max_bet" class="input-sm input-bordered w-full h-full max-w-xs" />
+              </li>
+              <li>
+                <input type="number" placeholder="Max Loss" v-model="max_loss" class="input-sm input-bordered w-full h-full max-w-xs" />
+              </li>
+              <li>
+                <button class="btn btn-sm h-full bg-sky-300" @click="calculate()">Calculate</button>
+              </li>
+            </ul>
+          </div>
+
+        </div>      
+      </div>
+    </center>
+  </div>
+</body>
+<!-- <script>
+  // Disable right-clicking
+document.addEventListener('contextmenu', function(event) {
+    event.preventDefault();
+});
+</script> -->
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js', { scope: '/' });
+  }
+</script>
+<script src="go_modules/wasm_exec.js"></script>
+  <script>
+    const { createApp } = Vue
+    
+    createApp({
+      delimiters : ['[[', ']]'],
+        data(){
+          return {
+            message: 'Welcome to Gupy!',
+            pyodide_msg: 'This is from Pyodide!',
+            data: {},
+            total_numbers: 38,
+            virtual: true,
+            minimize: true,
+            min_bet: '',
+            max_bet: '',
+            max_loss: '',
+            strategies: [
+              {
+                name: 'Double Dozen',
+                coverage: 24,
+                unit_size: 1,
+                ratio: 3,
+                profit_ratio: 1,
+                break_even_ratio: 3,
+                risk: 2,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 6,
+                traditional_min_units: 1
+              },
+              {
+                name: 'Single Dozen',
+                coverage: 12,
+                unit_size: 1,
+                ratio: 1.5,
+                profit_ratio: 2,
+                break_even_ratio: 1.5,
+                risk: 1,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 6,
+                traditional_min_units: 1
+              },
+              {
+                name: 'Modified Romanovsky',
+                coverage: 32,
+                unit_size: 1,
+                ratio: 9,
+                profit_ratio: 1,
+                break_even_ratio: 9,
+                risk: 8,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 1,
+                traditional_min_units: 3
+              },
+              {
+                name: 'Five Side Streets',
+                coverage: 30,
+                unit_size: 1,
+                ratio: 6,
+                profit_ratio: 1,
+                break_even_ratio: 6,
+                risk: 5,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 1,
+                traditional_min_units: 5
+              },
+              {
+                name: 'One to One',
+                coverage: 18,
+                unit_size: 1,
+                ratio: 2,
+                profit_ratio: 1,
+                break_even_ratio: 2,
+                risk: 1,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 6,
+                traditional_min_units: 1
+              },
+              {
+                name: 'Three Side Streets',
+                coverage: 9,
+                unit_size: 1,
+                ratio: 1.34,
+                profit_ratio: 9,
+                break_even_ratio: 1.34,
+                risk: 3,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 2,
+                traditional_min_units: 3
+              },
+              {
+                name: 'Five Streets',
+                coverage: 15,
+                unit_size: 1,
+                ratio: 1.72,
+                profit_ratio: 7,
+                break_even_ratio: 1.72,
+                risk: 5,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 2,
+                traditional_min_units: 5
+              },
+              {
+                name: 'Four Quads',
+                coverage: 16,
+                unit_size: 1,
+                ratio: 1.8,
+                profit_ratio: 5,
+                break_even_ratio: 1.8,
+                risk: 4,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 1,
+                traditional_min_units: 4
+              },
+              {
+                name: 'One Side Street',
+                coverage: 6,
+                unit_size: 1,
+                ratio: 1.2,
+                profit_ratio: 5,
+                break_even_ratio: 1.2,
+                risk: 1,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 6,
+                traditional_min_units: 1
+              },
+              {
+                name: 'One Quad',
+                coverage: 4,
+                unit_size: 1,
+                ratio: 1.25,
+                profit_ratio: 8,
+                break_even_ratio: 1.25,
+                risk: 1,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 6,
+                traditional_min_units: 1
+              },
+              {
+                name: 'Five Side Street Zeros',
+                coverage: 5,
+                unit_size: 1,
+                ratio: 1.25,
+                profit_ratio: 6,
+                break_even_ratio: 1.25,
+                risk: 1,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 1,
+                traditional_min_units: 5
+              },
+              {
+                name: 'Seven Streets',
+                coverage: 20,
+                unit_size: 1,
+                ratio: 2.4,
+                profit_ratio: 5,
+                break_even_ratio: 2.4,
+                risk: 7,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 1,
+                traditional_min_units: 7
+              },
+              {
+                name: 'Five Quads',
+                coverage: 20,
+                unit_size: 1,
+                ratio: 2.25,
+                profit_ratio: 4,
+                break_even_ratio: 2.25,
+                risk: 5,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 1,
+                traditional_min_units: 5
+              },
+              {
+                name: 'Two Quads',
+                coverage: 8,
+                unit_size: 1,
+                ratio: 1.3,
+                profit_ratio: 7,
+                break_even_ratio: 1.3,
+                risk: 2,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 3,
+                traditional_min_units: 2
+              },
+              {
+                name: 'Six Twos',
+                coverage: 12,
+                unit_size: 1,
+                ratio: 1.5,
+                profit_ratio: 12,
+                break_even_ratio: 1.5,
+                risk: 6,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 3,
+                traditional_min_units: 6
+              },
+              {
+                name: 'Nine Streets',
+                coverage: 27,
+                unit_size: 1,
+                ratio: 4,
+                profit_ratio: 3,
+                break_even_ratio: 4,
+                risk: 9,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 1,
+                traditional_min_units: 9
+              },
+              {
+                name: 'Eleven Streets',
+                coverage: 33,
+                unit_size: 1,
+                ratio: 12,
+                profit_ratio: 1,
+                break_even_ratio: 12,
+                risk: 11,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 1,
+                traditional_min_units: 11
+              },
+              {
+                name: 'All But One',
+                coverage: 35,
+                unit_size: 1,
+                ratio: 36,
+                profit_ratio: 1,
+                break_even_ratio: 36,
+                risk: 35,
+                bets: [
+                  {
+                    bet: 0,
+                    total_loss: 0,
+                    gain: 0
+                  }
+                ],
+                probability: 0,
+                avg_gain: 0,
+                max_simultanious_bets: 1,
+                traditional_min_units: 35
+              },
+            ],
+            failed_input: false,
+            calculated: false,
+            ordered_strategies: [],
+            modal_strategy_name: '',
+            modal_bets: [],
+            modal_spins: [],
+          }
+        },
+        methods: {
+          open_spins_modal(strategy){
+            this.modal_strategy_name = strategy;
+            this.modal_spins = [];
+            for (var item of this.strategies){
+              if (item.name == strategy){
+                this.modal_spins = item.spins_ml;
+                console.log(strategy)
+                console.log('strategy: '+JSON.stringify(item))
+              }
+            }
+            console.log('modal spins: '+JSON.stringify(this.modal_spins))
+            var modal = document.getElementById('my_modal_3');
+            modal.showModal()
+          },
+          open_modal(strategy){
+            this.modal_strategy_name = strategy;
+            this.modal_bets = [];
+            for (var item of this.strategies){
+              if (item.name == strategy){
+                this.modal_bets = item.bets;
+                console.log(strategy)
+                console.log('strategy: '+JSON.stringify(item))
+              }
+            }
+            console.log('modal bets: '+JSON.stringify(this.modal_bets))
+            var modal = document.getElementById('my_modal_2');
+            modal.showModal()
+          },
+          calculate(){
+            this.ordered_strategies = [];
+            if (this.min_bet == 0 || this.max_bet == 0 || this.max_loss == 0){
+              this.failed_input = 'Improper inputs for Min Bet, Max Bet, & Max Loss';
+            } else {
+              function calculateTotalLoss(bet, x, y, losses) {
+                  let totalLoss = 0;
+                  let currentBet = bet;
+
+                  for (let i = 0; i < losses; i++) {
+                      totalLoss += currentBet * y;
+                      currentBet *= x;
+                  }
+
+                  return totalLoss;
+              }
+
+              function findHighestMultiplier(bet, ratio, targetTotalLoss, y, losses) {
+                  let low = ratio; // Start with a low guess
+                  let high = low * low; // Start with a high guess, can increase if needed
+                  let precision = 0.000000000000001; // Precision for binary search
+
+                  while (high - low > precision) {
+                      let mid = (low + high) / 2;
+                      let totalLoss = calculateTotalLoss(bet, mid, y, losses);
+
+                      if (totalLoss < targetTotalLoss) {
+                          low = mid; // Increase the guess
+                      } else {
+                          high = mid; // Decrease the guess
+                      }
+                  }
+
+                  return (low + high) / 2; // Return the approximate solution for x
+              }
+              function calculateRoundedTotalLoss(x, y, losses) {
+                  let totalLoss = 0;
+                  let currentBet = 1; // Start with an initial bet of 1
+
+                  for (let i = 0; i < losses; i++) {
+                      currentBet = Math.ceil(currentBet); // Round up the current bet
+                      totalLoss += currentBet * y; // Add the loss (bet * y)
+                      currentBet *= x; // Multiply the bet by the multiplier x for the next round
+                  }
+
+                  return totalLoss;
+              }
+
+              function findMultiplierForMaxLoss(ratio, targetTotalLoss, y, losses) {
+                  let low = ratio; // Minimum possible multiplier
+                  let high = low * low; // A reasonable upper bound for the multiplier
+                  let precision = 0.00000001; // Precision for binary search
+                  let bestX = low;
+
+                  while (high - low > precision) {
+                      let mid = (low + high) / 2;
+                      let totalLoss = calculateRoundedTotalLoss(mid, y, losses);
+
+                      if (totalLoss <= targetTotalLoss) {
+                          bestX = mid; // This is the best so far, but let's check for a higher x
+                          low = mid;   // Try to find a larger x
+                      } else {
+                          high = mid;  // Reduce x to lower the total loss
+                      }
+                  }
+
+                  return bestX;
+              }           
+
+              for (var strategy of this.strategies){
+              // var strategy = this.strategies[0]
+                strategy.bets = [];
+                var total_loss = 0;
+                var current_bet = Math.ceil(strategy.unit_size * this.min_bet);
+                var bet_record = {};
+                var gain = 0;
+                var unit_bet = 0;
+                while (total_loss <= parseInt(this.max_loss)){
+                  if (strategy.bets.length == 0){
+                    total_loss = 0;
+                    if (this.virtual == false){
+                      // if (strategy.name == ''){
+                      //   current_bet = strategy.unit_size * 
+                      // } else {
+                      //   current_bet = this.min_bet
+                      // }
+                      if (strategy.traditional_min_units >= current_bet){
+                        current_bet = 1;
+                        unit_bet = current_bet;
+                      } else {
+                        current_bet = Math.ceil(current_bet/strategy.traditional_min_units)
+                        unit_bet = current_bet;
+                      }
+                    } else {
+                      if (strategy.risk*strategy.max_simultanious_bets >= current_bet){
+                        current_bet = 1;
+                        unit_bet = current_bet;
+                      } else {
+                        current_bet = Math.ceil(current_bet/(strategy.risk*strategy.max_simultanious_bets))
+                        unit_bet = current_bet;
+                      }
+
+                    }
+                  }
+                  total_loss = total_loss + (Math.ceil(current_bet) * strategy.risk);
+                  if (total_loss > parseInt(this.max_loss)){
+                    break;
+                  }
+                  if (current_bet > parseInt(this.max_bet)){
+                    break;
+                  }
+                  bet_record = {
+                    bet: current_bet,
+                    total_loss: total_loss,
+                    gain: (current_bet * strategy.profit_ratio) - (total_loss - (current_bet * strategy.risk))
+                  }
+                  strategy.bets.push(bet_record);
+                  current_bet = Math.ceil(current_bet * strategy.ratio); 
+                }
+                function checkRatio(bet, high, bet_times, max_loss){
+                  var count = 0;
+                  var losses = [];
+                  while(count < bet_times){
+                    losses.push(Math.ceil(bet * risk));
+                    bet = Math.ceil(bet * high);
+                    count++;
+                  }
+                  var total = 0;
+                  for (var loss of losses){
+                    total = total + loss;
+                  }
+                  return total
+                }
+
+                function findMultiplier(bet, ratio, max_loss, risk, bet_times) {
+                  var low = ratio;
+                  var increase = .1;
+                  var high = ratio;
+                  var total = checkRatio(bet, high, bet_times, max_loss);
+                  if (total < max_loss){
+                    high = high + increase;
+                  } else if (total > max_loss){
+
+                  } else {
+
+                  }
+
+                  console.log(losses)
+                  console.log('total: '+total)
+                  return ratio
+                }
+
+                if (this.minimize == false){
+                  // // for (var strategy of this.strategies){
+                  // let strategy = this.strategies[0]
+                  // Example usage
+                  let bet = unit_bet;  // Initial bet
+                  let max_loss = this.max_loss;  // Max loss
+                  let bet_times = strategy.bets.length;  // Number of bets
+                  console.log(strategy.bets)
+                  var ratio = strategy.ratio;
+                  var risk = strategy.risk;
+                  // ratio = findHighestMultiplier(bet, ratio, max_loss, bet_times, risk);
+
+                  ratio = findMultiplierForMaxLoss(ratio, max_loss, risk, bet_times);
+                  strategy.current_ratio = ratio;
+
+                  // ratio = findMultiplier(bet, ratio, max_loss, risk, bet_times);
+                  console.log(`Optimal Multiplier: ${ratio} ${strategy.name}`);
+                } else {
+                  var ratio = strategy.ratio;
+                  strategy.current_ratio = ratio;
+
+                  console.log(`Standard Multiplier: ${ratio} ${strategy.name}`);
+                }
+                // console.log(strategy)
+                strategy.bets = [];
+                var total_loss = 0;
+                var current_bet = Math.ceil(strategy.unit_size * this.min_bet);
+                var bet_record = {};
+                var gain = 0;
+                while (total_loss <= parseInt(this.max_loss)){
+                  var strategy_bets = strategy.bets;
+                  if (strategy_bets.length == 0){
+                    total_loss = 0;
+                    if (this.virtual == false){
+                      // if (strategy.name == ''){
+                      //   current_bet = strategy.unit_size * 
+                      // } else {
+                      //   current_bet = this.min_bet
+                      // }
+                      if (strategy.traditional_min_units >= current_bet){
+                        current_bet = 1;
+                      } else {
+                        current_bet = Math.ceil(current_bet/strategy.traditional_min_units)
+                      }
+                    } else {
+                      if (strategy.risk*strategy.max_simultanious_bets >= current_bet){
+                        current_bet = 1;
+                      } else {
+                        current_bet = Math.ceil(current_bet/(strategy.risk*strategy.max_simultanious_bets))
+                      }
+                    }
+                  }
+                  total_loss = total_loss + (current_bet * strategy.risk);
+                  if (total_loss > parseInt(this.max_loss)){
+                    break;
+                  }
+                  if (current_bet > parseInt(this.max_bet)){
+                    break;
+                  }
+                  bet_record = {
+                    bet: current_bet,
+                    total_loss: total_loss,
+                    gain: (current_bet * strategy.profit_ratio) - (total_loss - (current_bet * strategy.risk))
+                  }
+                  strategy.bets.push(bet_record);
+                  current_bet = Math.ceil(current_bet * ratio);//strategy.ratio; 9-7-24
+                }
+                strategy_bets = strategy.bets;
+                if (strategy_bets.length > 1){
+                  // console.log(strategy)
+                  // console.log(Math.floor(strategy_bets.length*((strategy.coverage*100)/this.total_numbers)/100))
+                  // console.log(strategy.bets[Math.floor(strategy_bets.length*((strategy.coverage*100)/this.total_numbers)/100)])
+                  strategy.avg_gain = strategy.bets[Math.floor(strategy_bets.length*((strategy.coverage*100)/this.total_numbers)/100)].gain
+                  strategy.probability = (((this.total_numbers-strategy.coverage)/this.total_numbers)**strategy_bets.length)*100
+                  strategy.max_loss = strategy.bets[strategy_bets.length - 1].total_loss;
+                } else if (strategy_bets.length == 1){
+                  strategy.avg_gain = strategy.bets[0].gain
+                  strategy.probability = (((this.total_numbers-strategy.coverage)/this.total_numbers)**strategy_bets.length)*100
+                  strategy.max_loss = strategy.bets[0].total_loss;
+                }
+                var avg_max_loss_spins = 1/(parseFloat(strategy.probability))*100;
+                strategy.spins_ml = [];
+                while (avg_max_loss_spins > 0){
+                  avg_max_loss_spins = avg_max_loss_spins-50;
+                  if (avg_max_loss_spins > 0){
+                    var line = {spins: avg_max_loss_spins,perc: (1 - Math.pow(1 - (strategy.probability/100), avg_max_loss_spins))*100, amt: avg_max_loss_spins*strategy.avg_gain}
+                    strategy.spins_ml.push(line);
+                  }
+                }
+                if (strategy.spins_ml.length == 0){
+                  strategy.spins_ml.push({spins: 0, perc: 100});
+                }
+              }
+              // Sort strategies based on probability
+              this.ordered_strategies = this.strategies.slice().sort((a, b) => a.probability - b.probability);
+            }
+            // }
+            this.calculated = true;
+          },
+          change_total_numbers(){
+            if (this.total_numbers == 38){
+              this.total_numbers = 37;
+            } else {
+              this.total_numbers = 38;
+            }
+          },
+        },
+        watch: {
+
+        },
+        created(){
+            // Make a request for a user with a given ID
+            axios.get('/api/example_api_endpoint')
+            .then(function (response) {
+                // handle success
+                console.log(response);
+                this.data = JSON.parse(JSON.stringify(response['data']))
+                console.log(this.data)
+            })
+            .catch(function (error) {
+                // handle error
+                console.log(error);
+
+            // use pyodide instead of api example
+        async function main(
+          pyodide_msg,
+        ){
+          const pyodide = await loadPyodide();
+          pyodide.registerJsModule("mymodule", { 
+            pyodide_msg:pyodide_msg,
+        })
+        await pyodide.loadPackage("numpy")
+        await pyodide.runPython(`
+from mymodule import *
+
+pyodide_msg = 'This is the changed pyodide message!'
+
+response = {'new_msg':pyodide_msg}
+`)
+      main(this.pyodide_msg).then(response => {
+        response = JSON.parse(response['new_msg'])
+        console.log(response)
+                
+            })
+            .finally(function () {
+                // always executed
+            });
+          }
+        })
+      },
+        mounted() {
+          const go = new Go();
+          WebAssembly.instantiateStreaming(fetch("go_modules/go_module.wasm"), go.importObject).then((result) => {
+            go.run(result.instance);
+          });
+
+          let worker = new Worker('worker.js');
+          worker.postMessage({ message: '' });
+          worker.onmessage = function (message) {
+            console.log(message.data)
+          }
+
+        },
+        computed:{
+
+        }
+
+    }).mount('#app')
+  </script>
+</html>      

@@ -34,7 +34,10 @@
       <div class="h-full">
         <img class="mt-4 mask mask-squircle h-96 w-96 max-h-full max-w-full object-contain hover:-translate-y-2 ease-in-out transition" src="./speartech_social_circle.png" />
         <br>
-        <button class="btn bg-blue-500 stroke-blue-500 hover:bg-blue-500 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/50 text-base-100">[[ message ]] </button>
+        <div class="flex flex-row gap-4 justify-center">
+          <a href="roulette-assistant/index.html" class="btn bg-blue-500 stroke-blue-500 hover:bg-blue-500 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/50 text-base-100">Roulette </a>
+          <a href="roulette-assistant/index.html" class="btn bg-blue-500 stroke-blue-500 hover:bg-blue-500 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/50 text-base-100">Baccarat </a>
+        </div>
         <br>
         <br>
         <!-- This block only appears on https apps for installing as a PWA standalone on your device -->
@@ -51,12 +54,43 @@
                 class=" btn btn-sm bg-blue-500  text-white  shadow-lg  hover:bg-blue-500/50 shadow-blue-500/50 hover:shadow-xl hover:shadow-blue-500/50 hover:-translate-y-0.5 no-animation"
                 @Click="prompt" id="install">Install</button>
             </div>
-            
+     
         </div>
         <br>
 
+
+
+        <!-- <ul class="timeline timeline-snap-icon max-md:timeline-compact timeline-vertical">
+          <li v-for="item in timelineitems">
+            <div class="timeline-middle">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="h-5 w-5">
+                <path
+                  fill-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+                  clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div v-if="item.pos == 'timeline-start'" class="timeline-start mb-10 md:text-end">
+              <time class="font-mono italic">[[item.date]]</time>
+              <div class="text-lg font-black">[[item.title]]</div>
+              [[item.description]]
+            </div>
+            <div v-else class="timeline-end mb-10 md:text-start">
+              <time class="font-mono italic">[[item.date]]</time>
+              <div class="text-lg font-black">[[item.title]]</div>
+              [[item.description]]
+            </div>
+  
+            <hr />
+          </li>
+  
+      </ul>    -->
       </div>
-    </center>
+      </center>
   </div>
 </body>
 <!-- <script>
@@ -65,11 +99,11 @@ document.addEventListener('contextmenu', function(event) {
     event.preventDefault();
 });
 </script> -->
-<script>
+<!-- <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js', { scope: '/' });
   }
-</script>
+</script> -->
   <script type="module">
     const { createApp } = Vue
     //  import { loadGoWasm } from './go_wasm.js';
@@ -80,6 +114,7 @@ document.addEventListener('contextmenu', function(event) {
             message: 'Welcome to SPEARTECH!',
             data: {},
             pwa_install: '',
+            timelineitems: [],
           }
         },
         methods: {
@@ -89,18 +124,36 @@ document.addEventListener('contextmenu', function(event) {
 
         },
         created(){
+          this.timelineitems = [
+            {
+              pos: 'timeline-start',
+              date: '07/21/2025',
+              title: 'SPEARTECH Website',
+              github: 'https://github.com/SPEARTECH/SPEARTECH.github.io',
+              description: 'SPEARTECH is now live! Explore our new features and updates.',
+              tech: ['Vue.js', 'Tailwind CSS', 'DaisyUI', 'Javascript', 'HTML', 'CSS']
+            },
+            {
+              pos: 'timeline-end',
+              date: '07/21/2025',
+              title: 'Feature Update',
+              github: 'https://github.com/SPEARTECH/SPEARTECH.github.io',
+              description: 'We have added new functionalities to enhance your experience.',
+              tech: ['Vue.js', 'Tailwind CSS', 'DaisyUI', 'Javascript', 'HTML', 'CSS']
+            },
+          ]
             // // This variable will save the event for later use.
-              window.addEventListener('beforeinstallprompt', (e) => {
-                  // Prevents the default mini-infobar or install dialog from appearing on mobile
-                  //   e.preventDefault();
-                  // Save the event because you'll need to trigger it later.
-                  this.pwa_install = e;
-                  // Show your customized install prompt for your PWA
-                  // Your own UI doesn't have to be a single element, you
-                  // can have buttons in different locations, or wait to prompt
-                  // as part of a critical journey.
-                  showInAppInstallPromotion();
-              });
+              // window.addEventListener('beforeinstallprompt', (e) => {
+              //     // Prevents the default mini-infobar or install dialog from appearing on mobile
+              //     //   e.preventDefault();
+              //     // Save the event because you'll need to trigger it later.
+              //     this.pwa_install = e;
+              //     // Show your customized install prompt for your PWA
+              //     // Your own UI doesn't have to be a single element, you
+              //     // can have buttons in different locations, or wait to prompt
+              //     // as part of a critical journey.
+              //     showInAppInstallPromotion();
+              // });
 
             // // Make a request for a user with a given ID
             // axios.get('/api/example_api_endpoint')
