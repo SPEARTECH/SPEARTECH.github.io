@@ -43,25 +43,7 @@
                 <ul class="menu menu-horizontal space-x-2">
                   <!-- Navbar menu content here -->
                   <li>
-                    <label class="label cursor-pointer">
-                      <span v-if="total_numbers == 38" class="label-text">Double Zero</span> 
-                      <span v-else class="label-text">Single Zero</span> 
-                      <input type="checkbox" class="toggle" @click="change_total_numbers()" checked />
-                    </label>
-                  </li>
-                  <li>
-                    <label class="label cursor-pointer">
-                      <span v-if="virtual == true" class="label-text">Total Max Bet (Virtual)</span> 
-                      <span v-else class="label-text">Traditional Max Bet</span> 
-                      <input type="checkbox" class="toggle" v-model="virtual" checked />
-                    </label>
-                  </li>
-                  <li>
-                    <label class="label cursor-pointer">
-                      <span v-if="minimize == true" class="label-text">Minimize Loss</span> 
-                      <span v-else class="label-text">Maximize Gain</span> 
-                      <input type="checkbox" class="toggle" v-model="minimize" checked />
-                    </label>
+                  <input type="number" placeholder="Banker %" v-model="banker_perc" class="input-sm input-bordered h-full" />
                   </li>
                   <li>
                   <input type="number" placeholder="Min Bet" v-model="min_bet" class="input-sm input-bordered h-full" />
@@ -236,7 +218,7 @@
                 <input type="number" placeholder="Max Loss" v-model="max_loss" class="input-sm input-bordered w-full h-full max-w-xs" />
               </li>
               <li>
-                <button class="btn btn-sm h-full bg-sky-300" @click="calculate()">Calculate</button>
+                <button class="btn btn-sm h-full bg-sky" @click="calculate()">Calculate</button>
               </li>
             </ul>
           </div>
@@ -276,7 +258,7 @@ document.addEventListener('contextmenu', function(event) {
             max_loss: '',
             strategies: [
               {
-                name: 'Double Dozen',
+                name: 'Player Bets',
                 coverage: 24,
                 unit_size: 1,
                 ratio: 3,
@@ -296,7 +278,7 @@ document.addEventListener('contextmenu', function(event) {
                 traditional_min_units: 1
               },
               {
-                name: 'Single Dozen',
+                name: 'Banker Bets',
                 coverage: 12,
                 unit_size: 1,
                 ratio: 1.5,
@@ -314,326 +296,6 @@ document.addEventListener('contextmenu', function(event) {
                 avg_gain: 0,
                 max_simultanious_bets: 6,
                 traditional_min_units: 1
-              },
-              {
-                name: 'Modified Romanovsky',
-                coverage: 32,
-                unit_size: 1,
-                ratio: 9,
-                profit_ratio: 1,
-                break_even_ratio: 9,
-                risk: 8,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 1,
-                traditional_min_units: 3
-              },
-              {
-                name: 'Five Side Streets',
-                coverage: 30,
-                unit_size: 1,
-                ratio: 6,
-                profit_ratio: 1,
-                break_even_ratio: 6,
-                risk: 5,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 1,
-                traditional_min_units: 5
-              },
-              {
-                name: 'One to One',
-                coverage: 18,
-                unit_size: 1,
-                ratio: 2,
-                profit_ratio: 1,
-                break_even_ratio: 2,
-                risk: 1,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 6,
-                traditional_min_units: 1
-              },
-              {
-                name: 'Three Side Streets',
-                coverage: 9,
-                unit_size: 1,
-                ratio: 1.34,
-                profit_ratio: 9,
-                break_even_ratio: 1.34,
-                risk: 3,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 2,
-                traditional_min_units: 3
-              },
-              {
-                name: 'Five Streets',
-                coverage: 15,
-                unit_size: 1,
-                ratio: 1.72,
-                profit_ratio: 7,
-                break_even_ratio: 1.72,
-                risk: 5,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 2,
-                traditional_min_units: 5
-              },
-              {
-                name: 'Four Quads',
-                coverage: 16,
-                unit_size: 1,
-                ratio: 1.8,
-                profit_ratio: 5,
-                break_even_ratio: 1.8,
-                risk: 4,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 1,
-                traditional_min_units: 4
-              },
-              {
-                name: 'One Side Street',
-                coverage: 6,
-                unit_size: 1,
-                ratio: 1.2,
-                profit_ratio: 5,
-                break_even_ratio: 1.2,
-                risk: 1,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 6,
-                traditional_min_units: 1
-              },
-              {
-                name: 'One Quad',
-                coverage: 4,
-                unit_size: 1,
-                ratio: 1.25,
-                profit_ratio: 8,
-                break_even_ratio: 1.25,
-                risk: 1,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 6,
-                traditional_min_units: 1
-              },
-              {
-                name: 'Five Side Street Zeros',
-                coverage: 5,
-                unit_size: 1,
-                ratio: 1.25,
-                profit_ratio: 6,
-                break_even_ratio: 1.25,
-                risk: 1,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 1,
-                traditional_min_units: 5
-              },
-              {
-                name: 'Seven Streets',
-                coverage: 20,
-                unit_size: 1,
-                ratio: 2.4,
-                profit_ratio: 5,
-                break_even_ratio: 2.4,
-                risk: 7,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 1,
-                traditional_min_units: 7
-              },
-              {
-                name: 'Five Quads',
-                coverage: 20,
-                unit_size: 1,
-                ratio: 2.25,
-                profit_ratio: 4,
-                break_even_ratio: 2.25,
-                risk: 5,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 1,
-                traditional_min_units: 5
-              },
-              {
-                name: 'Two Quads',
-                coverage: 8,
-                unit_size: 1,
-                ratio: 1.3,
-                profit_ratio: 7,
-                break_even_ratio: 1.3,
-                risk: 2,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 3,
-                traditional_min_units: 2
-              },
-              {
-                name: 'Six Twos',
-                coverage: 12,
-                unit_size: 1,
-                ratio: 1.5,
-                profit_ratio: 12,
-                break_even_ratio: 1.5,
-                risk: 6,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 3,
-                traditional_min_units: 6
-              },
-              {
-                name: 'Nine Streets',
-                coverage: 27,
-                unit_size: 1,
-                ratio: 4,
-                profit_ratio: 3,
-                break_even_ratio: 4,
-                risk: 9,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 1,
-                traditional_min_units: 9
-              },
-              {
-                name: 'Eleven Streets',
-                coverage: 33,
-                unit_size: 1,
-                ratio: 12,
-                profit_ratio: 1,
-                break_even_ratio: 12,
-                risk: 11,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 1,
-                traditional_min_units: 11
-              },
-              {
-                name: 'All But One',
-                coverage: 35,
-                unit_size: 1,
-                ratio: 36,
-                profit_ratio: 1,
-                break_even_ratio: 36,
-                risk: 35,
-                bets: [
-                  {
-                    bet: 0,
-                    total_loss: 0,
-                    gain: 0
-                  }
-                ],
-                probability: 0,
-                avg_gain: 0,
-                max_simultanious_bets: 1,
-                traditional_min_units: 35
               },
             ],
             failed_input: false,
