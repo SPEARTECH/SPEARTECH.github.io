@@ -55,7 +55,7 @@
                     <input type="number" placeholder="Max Loss" v-model="max_loss" class="input-sm input-bordered h-full" />
                       </li>
                   <li>
-                    <button class="btn btn-sm h-full bg-blue-500" @click="calculate()">Calculate</button>
+                    <button class="btn btn-sm h-full bg-blue-500 text-base-100" @click="calculate()">Calculate</button>
                   </li>
                 </ul>
               </div>
@@ -188,25 +188,7 @@
             <ul class="menu p-4 w-80 min-h-full bg-base-200 space-y-2">
               <!-- Sidebar content here -->
               <li>
-                <label class="label cursor-pointer">
-                  <span v-if="total_numbers == 38" class="label-text">Double Zero</span> 
-                  <span v-else class="label-text">Single Zero</span> 
-                  <input type="checkbox" class="toggle" @click="change_total_numbers()" checked />
-                </label>
-              </li>
-              <li>
-                <label class="label cursor-pointer">
-                  <span v-if="virtual == true" class="label-text">Total Max Bet (Virtual)</span> 
-                  <span v-else class="label-text">Traditional Max Bet</span> 
-              <input type="checkbox" class="toggle" v-model="virtual" checked />
-                </label>
-              </li>
-              <li>
-                <label class="label cursor-pointer">
-                  <span v-if="minimize == true" class="label-text">Minimize Loss</span> 
-                  <span v-else class="label-text">Maximize Gain</span> 
-                  <input type="checkbox" class="toggle" v-model="minimize" checked />
-                </label>
+                  <input type="number" placeholder="Banker % Fee" v-model="banker_perc" class="input-sm input-bordered w-full h-full max-w-xs" />
               </li>
               <li>
                   <input type="number" placeholder="Min Bet" v-model="min_bet" class="input-sm input-bordered w-full h-full max-w-xs" />
@@ -250,21 +232,22 @@ document.addEventListener('contextmenu', function(event) {
             message: 'Welcome to Gupy!',
             pyodide_msg: 'This is from Pyodide!',
             data: {},
-            total_numbers: 38,
-            virtual: true,
+            total_numbers: 36,
+            virtual: false,
             minimize: true,
+            banker_perc: .05,
             min_bet: '',
             max_bet: '',
             max_loss: '',
             strategies: [
               {
                 name: 'Player Bets',
-                coverage: 24,
+                coverage: 18,
                 unit_size: 1,
-                ratio: 3,
+                ratio: 2,
                 profit_ratio: 1,
-                break_even_ratio: 3,
-                risk: 2,
+                break_even_ratio: 2,
+                risk: 1,
                 bets: [
                   {
                     bet: 0,
@@ -279,11 +262,11 @@ document.addEventListener('contextmenu', function(event) {
               },
               {
                 name: 'Banker Bets',
-                coverage: 12,
+                coverage: 18,
                 unit_size: 1,
-                ratio: 1.5,
-                profit_ratio: 2,
-                break_even_ratio: 1.5,
+                ratio: 2,
+                profit_ratio: 1-(this.banker_perc),
+                break_even_ratio: 2+(this.banker_perc),
                 risk: 1,
                 bets: [
                   {
@@ -336,256 +319,123 @@ document.addEventListener('contextmenu', function(event) {
             modal.showModal()
           },
           calculate(){
-            this.ordered_strategies = [];
-            if (this.min_bet == 0 || this.max_bet == 0 || this.max_loss == 0){
-              this.failed_input = 'Improper inputs for Min Bet, Max Bet, & Max Loss';
-            } else {
-              function calculateTotalLoss(bet, x, y, losses) {
-                  let totalLoss = 0;
-                  let currentBet = bet;
+    this.ordered_strategies = [];
+    this.failed_input = false;
 
-                  for (let i = 0; i < losses; i++) {
-                      totalLoss += currentBet * y;
-                      currentBet *= x;
-                  }
+    if (!this.min_bet || !this.max_bet || !this.max_loss ||
+        this.min_bet <= 0 || this.max_bet <= 0 || this.max_loss <= 0){
+      this.failed_input = 'Improper inputs for Min Bet, Max Bet, & Max Loss';
+      this.calculated = false;
+      return;
+    }
 
-                  return totalLoss;
-              }
+    const maxLossLimit = parseFloat(this.max_loss);
+    const maxBetLimit  = parseFloat(this.max_bet);
+    const bankerFee    = parseFloat(this.banker_perc || 0);   // e.g. 0.05
+    const bankerPayout = 1 - bankerFee;                       // net per unit on Banker win
 
-              function findHighestMultiplier(bet, ratio, targetTotalLoss, y, losses) {
-                  let low = ratio; // Start with a low guess
-                  let high = low * low; // Start with a high guess, can increase if needed
-                  let precision = 0.000000000000001; // Precision for binary search
+    // Helper: single-win gain (kept for display)
+    function gainIfWin(bet, totalLossAfterPlacing, profitRatio, risk){
+      const lossBefore = totalLossAfterPlacing - bet * risk;
+      return bet * profitRatio - lossBefore;
+    }
 
-                  while (high - low > precision) {
-                      let mid = (low + high) / 2;
-                      let totalLoss = calculateTotalLoss(bet, mid, y, losses);
+    for (let strategy of this.strategies){
+      // Recompute profit_ratio dynamically (Banker may change fee)
+      if (strategy.name.toLowerCase().includes('banker')){
+        strategy.profit_ratio = bankerPayout;
+      } else {
+        strategy.profit_ratio = 1;
+      }
 
-                      if (totalLoss < targetTotalLoss) {
-                          low = mid; // Increase the guess
-                      } else {
-                          high = mid; // Decrease the guess
-                      }
-                  }
+      const risk = strategy.risk || 1;
+      let baseUnit = Math.ceil(strategy.unit_size * this.min_bet);
+      if (baseUnit < 1) baseUnit = 1;
 
-                  return (low + high) / 2; // Return the approximate solution for x
-              }
-              function calculateRoundedTotalLoss(x, y, losses) {
-                  let totalLoss = 0;
-                  let currentBet = 1; // Start with an initial bet of 1
+      let totalLoss = 0;
+      strategy.bets = [];
+      let pairIndex = 0;
 
-                  for (let i = 0; i < losses; i++) {
-                      currentBet = Math.ceil(currentBet); // Round up the current bet
-                      totalLoss += currentBet * y; // Add the loss (bet * y)
-                      currentBet *= x; // Multiply the bet by the multiplier x for the next round
-                  }
+      while (totalLoss < maxLossLimit){
+        let betSize;
 
-                  return totalLoss;
-              }
+        if (pairIndex === 0){
+          // Initial pair always base unit
+          betSize = baseUnit;
+        } else {
+          if (strategy.name.toLowerCase().includes('player')){
+            // Player even‑money: half of current total loss
+            betSize = Math.ceil(totalLoss / 2);
+          } else {
+            // Banker: adjust for commission so two wins cover totalLoss
+            // 2 * betSize * bankerPayout ≈ totalLoss  => betSize = totalLoss / (2*bankerPayout)
+            betSize = Math.ceil(totalLoss / (2 * bankerPayout));
+          }
+        }
 
-              function findMultiplierForMaxLoss(ratio, targetTotalLoss, y, losses) {
-                  let low = ratio; // Minimum possible multiplier
-                  let high = low * low; // A reasonable upper bound for the multiplier
-                  let precision = 0.00000001; // Precision for binary search
-                  let bestX = low;
+        if (betSize <= 0) betSize = baseUnit;
+        if (betSize > maxBetLimit) break;
 
-                  while (high - low > precision) {
-                      let mid = (low + high) / 2;
-                      let totalLoss = calculateRoundedTotalLoss(mid, y, losses);
+        // First bet of pair
+        const nextLoss1 = totalLoss + betSize * risk;
+        if (nextLoss1 > maxLossLimit) break;
+        totalLoss = nextLoss1;
+        strategy.bets.push({
+          bet: betSize,
+          total_loss: totalLoss,
+          gain: gainIfWin(betSize, totalLoss, strategy.profit_ratio, risk)
+        });
 
-                      if (totalLoss <= targetTotalLoss) {
-                          bestX = mid; // This is the best so far, but let's check for a higher x
-                          low = mid;   // Try to find a larger x
-                      } else {
-                          high = mid;  // Reduce x to lower the total loss
-                      }
-                  }
+        // Second bet of pair (same size)
+        const nextLoss2 = totalLoss + betSize * risk;
+        if (nextLoss2 > maxLossLimit || betSize > maxBetLimit) break;
+        totalLoss = nextLoss2;
+        strategy.bets.push({
+          bet: betSize,
+          total_loss: totalLoss,
+          gain: gainIfWin(betSize, totalLoss, strategy.profit_ratio, risk)
+        });
 
-                  return bestX;
-              }           
+        pairIndex += 1;
+      }
 
-              for (var strategy of this.strategies){
-              // var strategy = this.strategies[0]
-                strategy.bets = [];
-                var total_loss = 0;
-                var current_bet = Math.ceil(strategy.unit_size * this.min_bet);
-                var bet_record = {};
-                var gain = 0;
-                var unit_bet = 0;
-                while (total_loss <= parseInt(this.max_loss)){
-                  if (strategy.bets.length == 0){
-                    total_loss = 0;
-                    if (this.virtual == false){
-                      // if (strategy.name == ''){
-                      //   current_bet = strategy.unit_size * 
-                      // } else {
-                      //   current_bet = this.min_bet
-                      // }
-                      if (strategy.traditional_min_units >= current_bet){
-                        current_bet = 1;
-                        unit_bet = current_bet;
-                      } else {
-                        current_bet = Math.ceil(current_bet/strategy.traditional_min_units)
-                        unit_bet = current_bet;
-                      }
-                    } else {
-                      if (strategy.risk*strategy.max_simultanious_bets >= current_bet){
-                        current_bet = 1;
-                        unit_bet = current_bet;
-                      } else {
-                        current_bet = Math.ceil(current_bet/(strategy.risk*strategy.max_simultanious_bets))
-                        unit_bet = current_bet;
-                      }
+      // Stats
+      if (strategy.bets.length){
+        strategy.max_loss = strategy.bets[strategy.bets.length - 1].total_loss;
+        // Keep your existing probability formula (coverage retained for compatibility)
+        strategy.probability =
+          (((this.total_numbers - strategy.coverage)/this.total_numbers) ** strategy.bets.length) * 100;
+        const mid = Math.min(strategy.bets.length - 1, Math.floor(strategy.bets.length / 2));
+        strategy.avg_gain = strategy.bets[mid].gain;
+      } else {
+        strategy.max_loss = 0;
+        strategy.probability = 0;
+        strategy.avg_gain = 0;
+      }
 
-                    }
-                  }
-                  total_loss = total_loss + (Math.ceil(current_bet) * strategy.risk);
-                  if (total_loss > parseInt(this.max_loss)){
-                    break;
-                  }
-                  if (current_bet > parseInt(this.max_bet)){
-                    break;
-                  }
-                  bet_record = {
-                    bet: current_bet,
-                    total_loss: total_loss,
-                    gain: (current_bet * strategy.profit_ratio) - (total_loss - (current_bet * strategy.risk))
-                  }
-                  strategy.bets.push(bet_record);
-                  current_bet = Math.ceil(current_bet * strategy.ratio); 
-                }
-                function checkRatio(bet, high, bet_times, max_loss){
-                  var count = 0;
-                  var losses = [];
-                  while(count < bet_times){
-                    losses.push(Math.ceil(bet * risk));
-                    bet = Math.ceil(bet * high);
-                    count++;
-                  }
-                  var total = 0;
-                  for (var loss of losses){
-                    total = total + loss;
-                  }
-                  return total
-                }
+      // Construct spins_ml similar to prior logic
+      let bustProb = parseFloat(strategy.probability)/100;
+      let avgMaxLossSpins = 1 / (bustProb || 1);
+      strategy.spins_ml = [];
+      while (avgMaxLossSpins > 0){
+        avgMaxLossSpins -= 50;
+        if (avgMaxLossSpins > 0){
+          const perc = (1 - Math.pow(1 - bustProb, avgMaxLossSpins)) * 100;
+            const amt  = avgMaxLossSpins * strategy.avg_gain;
+          strategy.spins_ml.push({ spins: avgMaxLossSpins, perc, amt });
+        }
+      }
+      if (!strategy.spins_ml.length){
+        strategy.spins_ml.push({ spins: 0, perc: 100, amt: 0 });
+      }
 
-                function findMultiplier(bet, ratio, max_loss, risk, bet_times) {
-                  var low = ratio;
-                  var increase = .1;
-                  var high = ratio;
-                  var total = checkRatio(bet, high, bet_times, max_loss);
-                  if (total < max_loss){
-                    high = high + increase;
-                  } else if (total > max_loss){
+      // Effective ratio display (pair system – treat as 1)
+      strategy.current_ratio = 1;
+    }
 
-                  } else {
-
-                  }
-
-                  console.log(losses)
-                  console.log('total: '+total)
-                  return ratio
-                }
-
-                if (this.minimize == false){
-                  // // for (var strategy of this.strategies){
-                  // let strategy = this.strategies[0]
-                  // Example usage
-                  let bet = unit_bet;  // Initial bet
-                  let max_loss = this.max_loss;  // Max loss
-                  let bet_times = strategy.bets.length;  // Number of bets
-                  console.log(strategy.bets)
-                  var ratio = strategy.ratio;
-                  var risk = strategy.risk;
-                  // ratio = findHighestMultiplier(bet, ratio, max_loss, bet_times, risk);
-
-                  ratio = findMultiplierForMaxLoss(ratio, max_loss, risk, bet_times);
-                  strategy.current_ratio = ratio;
-
-                  // ratio = findMultiplier(bet, ratio, max_loss, risk, bet_times);
-                  console.log(`Optimal Multiplier: ${ratio} ${strategy.name}`);
-                } else {
-                  var ratio = strategy.ratio;
-                  strategy.current_ratio = ratio;
-
-                  console.log(`Standard Multiplier: ${ratio} ${strategy.name}`);
-                }
-                // console.log(strategy)
-                strategy.bets = [];
-                var total_loss = 0;
-                var current_bet = Math.ceil(strategy.unit_size * this.min_bet);
-                var bet_record = {};
-                var gain = 0;
-                while (total_loss <= parseInt(this.max_loss)){
-                  var strategy_bets = strategy.bets;
-                  if (strategy_bets.length == 0){
-                    total_loss = 0;
-                    if (this.virtual == false){
-                      // if (strategy.name == ''){
-                      //   current_bet = strategy.unit_size * 
-                      // } else {
-                      //   current_bet = this.min_bet
-                      // }
-                      if (strategy.traditional_min_units >= current_bet){
-                        current_bet = 1;
-                      } else {
-                        current_bet = Math.ceil(current_bet/strategy.traditional_min_units)
-                      }
-                    } else {
-                      if (strategy.risk*strategy.max_simultanious_bets >= current_bet){
-                        current_bet = 1;
-                      } else {
-                        current_bet = Math.ceil(current_bet/(strategy.risk*strategy.max_simultanious_bets))
-                      }
-                    }
-                  }
-                  total_loss = total_loss + (current_bet * strategy.risk);
-                  if (total_loss > parseInt(this.max_loss)){
-                    break;
-                  }
-                  if (current_bet > parseInt(this.max_bet)){
-                    break;
-                  }
-                  bet_record = {
-                    bet: current_bet,
-                    total_loss: total_loss,
-                    gain: (current_bet * strategy.profit_ratio) - (total_loss - (current_bet * strategy.risk))
-                  }
-                  strategy.bets.push(bet_record);
-                  current_bet = Math.ceil(current_bet * ratio);//strategy.ratio; 9-7-24
-                }
-                strategy_bets = strategy.bets;
-                if (strategy_bets.length > 1){
-                  // console.log(strategy)
-                  // console.log(Math.floor(strategy_bets.length*((strategy.coverage*100)/this.total_numbers)/100))
-                  // console.log(strategy.bets[Math.floor(strategy_bets.length*((strategy.coverage*100)/this.total_numbers)/100)])
-                  strategy.avg_gain = strategy.bets[Math.floor(strategy_bets.length*((strategy.coverage*100)/this.total_numbers)/100)].gain
-                  strategy.probability = (((this.total_numbers-strategy.coverage)/this.total_numbers)**strategy_bets.length)*100
-                  strategy.max_loss = strategy.bets[strategy_bets.length - 1].total_loss;
-                } else if (strategy_bets.length == 1){
-                  strategy.avg_gain = strategy.bets[0].gain
-                  strategy.probability = (((this.total_numbers-strategy.coverage)/this.total_numbers)**strategy_bets.length)*100
-                  strategy.max_loss = strategy.bets[0].total_loss;
-                }
-                var avg_max_loss_spins = 1/(parseFloat(strategy.probability))*100;
-                strategy.spins_ml = [];
-                while (avg_max_loss_spins > 0){
-                  avg_max_loss_spins = avg_max_loss_spins-50;
-                  if (avg_max_loss_spins > 0){
-                    var line = {spins: avg_max_loss_spins,perc: (1 - Math.pow(1 - (strategy.probability/100), avg_max_loss_spins))*100, amt: avg_max_loss_spins*strategy.avg_gain}
-                    strategy.spins_ml.push(line);
-                  }
-                }
-                if (strategy.spins_ml.length == 0){
-                  strategy.spins_ml.push({spins: 0, perc: 100});
-                }
-              }
-              // Sort strategies based on probability
-              this.ordered_strategies = this.strategies.slice().sort((a, b) => a.probability - b.probability);
-            }
-            // }
-            this.calculated = true;
-          },
+    this.ordered_strategies = this.strategies.slice().sort((a,b)=>a.probability - b.probability);
+    this.calculated = true;                    
+      },
           change_total_numbers(){
             if (this.total_numbers == 38){
               this.total_numbers = 37;
